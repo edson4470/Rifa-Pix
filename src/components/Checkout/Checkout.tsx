@@ -1,76 +1,65 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-// Esta interface simula os dados que viriam da sua Rifa criada
-interface CheckoutProps {
-  titulo?: string;
-  precoUnitario?: number;
-}
+export function Checkout() {
+  const [rifas, setRifas] = useState<any[]>([]);
 
-export function Checkout({ titulo = "Título da Rifa", precoUnitario = 1.89 }: CheckoutProps) {
-  const [quantidade, setQuantidade] = useState(1);
-  const total = quantidade * precoUnitario;
-
-  // Função para garantir que o input seja sempre um número válido
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valor = parseInt(e.target.value);
-    setQuantidade(isNaN(valor) || valor < 1 ? 1 : valor);
-  };
+  useEffect(() => {
+    fetch('http://localhost:3001/rifas')
+      .then(res => res.json())
+      .then(data => setRifas(data))
+      .catch(err => console.error("Erro ao conectar:", err));
+  }, []);
 
   return (
-    <div className="bg-[#18181b] border border-[#27272a] rounded-2xl p-6 w-full max-w-lg mx-auto shadow-2xl">
-      {/* Título da Rifa */}
-      <div className="text-center mb-6">
-        <h1 className="text-xl font-bold text-white mb-1">{titulo}</h1>
-        <p className="text-zinc-400 text-sm">Selecione quantos números deseja comprar:</p>
-      </div>
+    <div className="p-6 max-w-5xl mx-auto">
+      <h1 className="text-3xl font-bold text-white mb-2">Escolha o seu título</h1>
+      <p className="text-zinc-400 mb-8">Confira os detalhes e selecione a campanha.</p>
+      
+      <div className="grid grid-cols-1 gap-8">
+        {rifas.map((rifa) => (
+          <div key={rifa.id} className="bg-zinc-900 border border-zinc-700 p-6 rounded-xl flex flex-col md:flex-row gap-6">
+            
+            {/* ÁREA DAS FOTOS */}
+            <div className="w-full md:w-1/2">
+              {/* Foto Principal (ou a primeira da lista) */}
+              <div className="bg-zinc-800 rounded-lg overflow-hidden h-64 flex items-center justify-center mb-3">
+                {rifa.imagens && rifa.imagens.length > 0 ? (
+                  <img src={rifa.imagens[0]} alt={rifa.titulo} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-zinc-500">Sem fotos</span>
+                )}
+              </div>
+              
+              {/* Miniaturas (Grid de fotos) */}
+              <div className="grid grid-cols-5 gap-2">
+                {rifa.imagens?.slice(1, 6).map((img: string, idx: number) => (
+                  <div key={idx} className="bg-zinc-800 h-16 rounded overflow-hidden cursor-pointer hover:border-emerald-500 border border-transparent">
+                    <img src={img} alt="Miniatura" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            </div>
 
-      {/* Seletor Quantidade (Input + Botões) */}
-      <div className="flex items-center justify-between bg-[#09090b] border border-[#27272a] rounded-lg p-2 mb-4">
-        <button 
-          onClick={() => setQuantidade(Math.max(1, quantidade - 1))} 
-          className="w-12 h-12 flex items-center justify-center text-white font-bold text-2xl hover:bg-[#27272a] rounded-lg transition-all"
-        >-</button>
-        
-        <input 
-          type="number" 
-          value={quantidade} 
-          onChange={handleInputChange}
-          className="w-full bg-transparent text-center text-3xl text-white font-bold outline-none"
-        />
+            {/* ÁREA DOS DETALHES */}
+            <div className="w-full md:w-1/2 flex flex-col justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">{rifa.titulo}</h2>
+                <p className="text-zinc-400 text-sm mb-6">{rifa.descricao}</p>
+                <div className="bg-zinc-800 p-3 rounded inline-block">
+                  <span className="text-zinc-300">Valor: </span>
+                  <span className="text-emerald-400 font-bold text-lg">
+                    R$ {Number(rifa.preco_bilhete).toFixed(2)}
+                  </span>
+                </div>
+              </div>
 
-        <button 
-          onClick={() => setQuantidade(quantidade + 1)} 
-          className="w-12 h-12 flex items-center justify-center text-[#22c55e] font-bold text-2xl hover:bg-[#27272a] rounded-lg transition-all"
-        >+</button>
-      </div>
-
-      {/* Botões de Seleção Rápida */}
-      <div className="grid grid-cols-4 gap-2 mb-6">
-        {[10, 50, 100, 200].map((num) => (
-          <button
-            key={num}
-            onClick={() => setQuantidade(num)}
-            className={`py-3 rounded-lg font-bold text-sm border transition-all ${
-              num === 100 
-                ? 'bg-[#22c55e] text-black border-[#22c55e]' 
-                : 'bg-[#27272a] text-white border-[#27272a] hover:bg-[#3f3f46]'
-            }`}
-          >
-            +{num}
-          </button>
+              <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-lg transition-colors mt-6">
+                Selecionar Rifa
+              </button>
+            </div>
+          </div>
         ))}
       </div>
-
-      {/* Botão Garantir Números */}
-      <button className="w-full bg-[#22c55e] hover:bg-[#16a34a] text-black font-bold py-4 rounded-lg flex items-center justify-between px-6 mb-4 transition-all active:scale-[0.98]">
-        <span className="font-black">GARANTIR NÚMEROS</span>
-        <span className="font-bold text-lg">R$ {total.toFixed(2).replace('.', ',')}</span>
-      </button>
-
-      {/* Rodapé */}
-      <button className="w-full bg-[#09090b] border border-[#27272a] py-3 rounded-lg font-bold text-zinc-400 hover:border-[#22c55e] transition-all">
-        ↓ Descrição/Regulamento
-      </button>
     </div>
   );
 }
