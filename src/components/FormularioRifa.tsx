@@ -1,17 +1,16 @@
 import { useState, useRef } from 'react';
 
-export function FormularioRifa() {
-  // Controle de Etapas
+export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void }) {
   const [etapa, setEtapa] = useState(1);
 
-  // ================= ESTADOS DA ETAPA 1 (Intactos) =================
+  // ================= ESTADOS DA ETAPA 1 =================
   const [nome, setNome] = useState('');
   const [origem, setOrigem] = useState('');
   const [qtd, setQtd] = useState(0);
-  const [valorEmCentavos, setValorEmCentavos] = useState(0);
+  const [valorEmTexto, setValorEmTexto] = useState(''); 
   const [mostrarTabela, setMostrarTabela] = useState(false);
 
-  // ================= ESTADOS DA ETAPA 2 (Intactos) =================
+  // ================= ESTADOS DA ETAPA 2 =================
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [prazoReserva, setPrazoReserva] = useState('');
   const [minTitulos, setMinTitulos] = useState('');
@@ -32,18 +31,18 @@ export function FormularioRifa() {
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [startCrop, setStartCrop] = useState(crop);
 
-  // ================= ESTADOS DA ETAPA 3 (Modo e Sorteio) =================
+  // ================= ESTADOS DA ETAPA 3 =================
   const [modoTitulos, setModoTitulos] = useState<'aleatorio' | 'exposto'>('aleatorio');
   const [progressoVisivel, setProgressoVisivel] = useState(true);
   const [temDataSorteio, setTemDataSorteio] = useState<'sem_data' | 'com_data'>('sem_data');
   const [dataEfetivaSorteio, setDataEfetivaSorteio] = useState('');
 
-  // ================= ESTADOS NOVOS: PRÊMIOS E PROMOÇÕES =================
+  // ================= ESTADOS DE PRÊMIOS E PROMOÇÕES =================
   const [modalPremios, setModalPremios] = useState(false);
   const [premios, setPremios] = useState([{ id: 1, descricao: '' }]);
 
   const [modalPromocoes, setModalPromocoes] = useState(false);
-  const [promocoes, setPromocoes] = useState([{ id: 1, qtd: '', valorEmCentavos: 0 }]);
+  const [promocoes, setPromocoes] = useState([{ id: 1, qtd: '', valorEmTexto: '' }]);
 
   // Funções de Prêmios
   const addPremio = () => setPremios([...premios, { id: Date.now(), descricao: '' }]);
@@ -51,16 +50,19 @@ export function FormularioRifa() {
   const updatePremio = (id: number, val: string) => setPremios(premios.map(p => p.id === id ? { ...p, descricao: val } : p));
 
   // Funções de Promoções
-  const addPromocao = () => setPromocoes([...promocoes, { id: Date.now(), qtd: '', valorEmCentavos: 0 }]);
+  const addPromocao = () => setPromocoes([...promocoes, { id: Date.now(), qtd: '', valorEmTexto: '' }]);
   const removePromocao = (id: number) => setPromocoes(promocoes.filter(p => p.id !== id));
   const updatePromocaoQtd = (id: number, val: string) => setPromocoes(promocoes.map(p => p.id === id ? { ...p, qtd: val } : p));
   const updatePromocaoValor = (id: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const apenasNumeros = e.target.value.replace(/\D/g, '');
-    setPromocoes(promocoes.map(p => p.id === id ? { ...p, valorEmCentavos: Number(apenasNumeros) } : p));
+    let valorDigitado = e.target.value.replace(/\D/g, '');
+    let valorFormatado = '';
+    if (valorDigitado) {
+      valorFormatado = (Number(valorDigitado) / 100).toFixed(2).replace('.', ',');
+    }
+    setPromocoes(promocoes.map(p => p.id === id ? { ...p, valorEmTexto: valorFormatado } : p));
   };
 
-
-  // ================= LÓGICAS DA ETAPA 1 E 2 (Intactas) =================
+  // ================= LÓGICAS E MÁSCARAS CORRIGIDAS =================
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, acao: 'mover' | 'redimensionar') => {
     e.stopPropagation();
     setDragAcao(acao);
@@ -86,7 +88,17 @@ export function FormularioRifa() {
 
   const handlePointerUp = () => setDragAcao('nenhuma');
 
-  const valorEmReais = valorEmCentavos / 100;
+  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let valorDigitado = e.target.value.replace(/\D/g, '');
+    if (!valorDigitado) {
+      setValorEmTexto('');
+      return;
+    }
+    const valorNumerico = Number(valorDigitado) / 100;
+    setValorEmTexto(valorNumerico.toFixed(2).replace('.', ','));
+  };
+
+  const valorEmReais = Number(valorEmTexto.replace(',', '.')) || 0;
   const arrecadacaoEstimada = qtd * valorEmReais;
 
   const getTaxa = (q: number) => {
@@ -110,11 +122,6 @@ export function FormularioRifa() {
   };
 
   const taxaAtual = getTaxa(qtd);
-
-  const handleValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const apenasNumeros = e.target.value.replace(/\D/g, '');
-    setValorEmCentavos(Number(apenasNumeros));
-  };
 
   const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -160,7 +167,20 @@ export function FormularioRifa() {
   const excluirFoto = () => setFotoPreview(null);
 
   const finalizarCampanha = () => {
-    alert("Campanha pronta para ser enviada para o banco de dados!");
+    const dadosParaSalvar = {
+      nome: nome || "Campanha Sem Nome",
+      fotoUrl: fotoPreview,
+      totalCotas: qtd > 0 ? qtd : 100,
+      valorPorCotaEmReais: valorEmReais,
+      cotasVendidas: 0,
+      status: "Pendente"
+    };
+
+    if (onSucesso) {
+      onSucesso(dadosParaSalvar);
+    } else {
+      alert("Campanha salva com sucesso!");
+    }
   };
 
   return (
@@ -178,7 +198,8 @@ export function FormularioRifa() {
             disabled={etapa === 1}
             className={`border border-[#27272a] bg-[#09090b] px-4 py-2 rounded flex items-center gap-2 text-sm transition-colors ${etapa === 1 ? 'opacity-50 cursor-not-allowed text-zinc-600' : 'text-zinc-400 hover:text-white'}`}
           >
-            <span>{'<'}</span> Voltar
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+            Voltar
           </button>
         </div>
 
@@ -231,48 +252,67 @@ export function FormularioRifa() {
             <select value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className="w-full bg-[#09090b] border border-[#27272a] rounded p-3 focus:border-[#22c55e] outline-none">
               <option value="0">Selecionar</option>
               <optgroup label="Títulos">
-                <option value="25">25 títulos (00 a 24)</option>
-                <option value="50">50 títulos (00 a 49)</option>
-                <option value="100">100 títulos (00 a 99)</option>
-                <option value="150">150 títulos (000 a 149)</option>
-                <option value="200">200 títulos (000 a 199)</option>
-                <option value="250">250 títulos (000 a 249)</option>
-                <option value="300">300 títulos (000 a 299)</option>
-                <option value="400">400 títulos (000 a 399)</option>
-                <option value="500">500 títulos (000 a 499)</option>
-                <option value="600">600 títulos (000 a 599)</option>
-                <option value="700">700 títulos (000 a 699)</option>
-                <option value="800">800 títulos (000 a 799)</option>
-                <option value="900">900 títulos (000 a 899)</option>
-                <option value="1000">1000 títulos (000 a 999)</option>
-                <option value="1100">1100 títulos (0000 a 1099)</option>
-                <option value="1500">1500 títulos (0000 a 1499)</option>
-                <option value="1600">1600 títulos (0000 a 1599)</option>
-                <option value="2000">2000 títulos (0000 a 1999)</option>
-                <option value="2500">2500 títulos (0000 a 2499)</option>
-                <option value="3000">3000 títulos (0000 a 2999)</option>
-                <option value="3500">3500 títulos (0000 a 3499)</option>
-                <option value="4000">4000 títulos (0000 a 3999)</option>
-                <option value="4500">4500 títulos (0000 a 4499)</option>
-                <option value="5000">5000 títulos (0000 a 4999)</option>
-                <option value="5500">5500 títulos (0000 a 5499)</option>
-                <option value="6000">6000 títulos (0000 a 5999)</option>
-                <option value="7000">7000 títulos (0000 a 6999)</option>
-                <option value="1000000">1.000.000 títulos (000000 a 999999)</option>
-                <option value="10000000">10.000.000 títulos (0000000 a 9999999)</option>
+<option value="25">25 títulos - (00 à 24)</option>
+                <option value="50">50 títulos - (00 à 49)</option>
+                <option value="100">100 títulos - (00 à 99)</option>
+                <option value="150">150 títulos - (000 à 149)</option>
+                <option value="200">200 títulos - (000 à 199)</option>
+                <option value="250">250 títulos - (000 à 249)</option>
+                <option value="300">300 títulos - (000 à 299)</option>
+                <option value="400">400 títulos - (000 à 399)</option>
+                <option value="500">500 títulos - (000 à 499)</option>
+                <option value="600">600 títulos - (000 à 599)</option>
+                <option value="700">700 títulos - (000 à 699)</option>
+                <option value="800">800 títulos - (000 à 799)</option>
+                <option value="900">900 títulos - (000 à 899)</option>
+                <option value="1000">1000 títulos - (000 à 999)</option>
+                <option value="1100">1100 títulos - (0000 à 1099)</option>
+                <option value="1500">1500 títulos - (0000 à 1499)</option>
+                <option value="1600">1600 títulos - (0000 à 1599)</option>
+                <option value="2000">2000 títulos - (0000 à 1999)</option>
+                <option value="2500">2500 títulos - (0000 à 2499)</option>
+                <option value="3000">3000 títulos - (0000 à 2999)</option>
+                <option value="3500">3500 títulos - (0000 à 3499)</option>
+                <option value="4000">4000 títulos - (0000 à 3999)</option>
+                <option value="4500">4500 títulos - (0000 à 4499)</option>
+                <option value="5000">5000 títulos - (0000 à 4999)</option>
+                <option value="6000">6000 títulos - (0000 à 5999)</option>
+                <option value="7000">7000 títulos - (0000 à 6999)</option>
+                <option value="8000">8000 títulos - (0000 à 7999)</option>
+                <option value="10000">10 mil títulos - (00000 à 09999)</option>
+                <option value="20000">20 mil títulos - (00000 à 19999)</option>
+                <option value="30000">30 mil títulos - (00000 à 29999)</option>
+                <option value="50000">50 mil títulos - (00000 à 49999)</option>
+                <option value="70000">70 mil títulos - (00000 à 69999)</option>
+                <option value="100000">100 mil títulos - (00000 à 99999)</option>
+                <option value="200000">200 mil títulos - (000000 à 199999)</option>
+                <option value="300000">300 mil títulos - (000000 à 299999)</option>
+                <option value="500000">500 mil títulos - (000000 à 499999)</option>
+                <option value="700000">700 mil títulos - (000000 à 699999)</option>
+                <option value="1000000">1 milhão de títulos - (000000 à 999999)</option>
+                <option value="10000000">10 milhões de títulos - (0000000 à 9999999)</option>
               </optgroup>
             </select>
           </div>
 
           <div className="mb-6">
             <label className="block text-sm text-zinc-400 mb-2">Valor de cada título (R$)</label>
-            <input type="text" value={valorEmCentavos > 0 ? (valorEmCentavos / 100).toFixed(2).replace('.', ',') : ''} onChange={handleValorChange} className="w-full bg-[#09090b] border border-[#27272a] rounded p-3 focus:border-[#22c55e] outline-none" placeholder="0,00" />
+            <input 
+              type="text" 
+              value={valorEmTexto} 
+              onChange={handleValorChange} 
+              className="w-full bg-[#09090b] border border-[#27272a] rounded p-3 focus:border-[#22c55e] outline-none" 
+              placeholder="0,00" 
+            />
           </div>
 
           <div className="mb-6 p-4 bg-[#09090b] rounded border border-[#27272a]">
-            <p className="text-sm">Arrecadação estimada: <span className="text-[#22c55e] font-bold">R$ {arrecadacaoEstimada.toFixed(2).replace('.', ',')}</span></p>
-            <p className="text-sm mt-1">Taxa: <span className="font-bold">R$ {taxaAtual.toFixed(2).replace('.', ',')}</span></p>
-            <button onClick={() => setMostrarTabela(true)} className="text-sm text-[#22c55e] underline mt-2 hover:opacity-80">Ver tabela de taxa →</button>
+            <p className="text-sm">Arrecadação estimada: <span className="text-[#22c55e] font-bold">R$ {arrecadacaoEstimada.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
+            <p className="text-sm mt-1">Taxa de publicação: <span className="font-bold text-white">R$ {taxaAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
+            
+            <button onClick={() => setMostrarTabela(true)} className="text-sm text-[#22c55e] underline mt-2 hover:opacity-80">
+              Ver tabela de taxas de publicação →
+            </button>
           </div>
 
           <button onClick={() => setEtapa(2)} className="w-full bg-[#22c55e] hover:bg-green-600 text-black font-bold py-3 rounded transition-colors">Criar e continuar</button>
@@ -297,7 +337,7 @@ export function FormularioRifa() {
             ) : (
               <label className="w-full h-48 bg-[#09090b] border-2 border-dashed border-[#27272a] rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#22c55e] hover:bg-[#22c55e]/5 transition-all overflow-hidden relative">
                 <input type="file" accept="image/*" className="hidden" onChange={handleFotoChange} />
-                <span className="text-3xl mb-2 text-zinc-500">📸</span>
+                <svg className="w-8 h-8 text-zinc-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                 <span className="text-sm text-zinc-400">Clique para selecionar a foto</span>
               </label>
             )}
@@ -349,14 +389,14 @@ export function FormularioRifa() {
         </div>
       )}
 
-      {/* ================= ETAPA 3 (MODO E RESULTADO) ================= */}
+      {/* ================= ETAPA 3 ================= */}
       {etapa === 3 && (
         <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
           
-          {/* Caixa de Modo */}
           <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-5">
             <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-              <span className="text-[#22c55e]">⚙️</span> Modo
+              <svg className="w-5 h-5 text-[#22c55e]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Modo
             </h3>
             
             <div className="flex bg-[#18181b] rounded-md p-1 mb-6 border border-[#27272a]">
@@ -386,29 +426,21 @@ export function FormularioRifa() {
             </div>
           </div>
 
-          {/* Botões de Prêmios e Promoção (AGORA SÃO CLICÁVEIS) */}
           <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={() => setModalPremios(true)}
-              className="bg-[#09090b] border border-[#27272a] rounded-lg p-5 flex flex-col items-center justify-center hover:border-[#22c55e] hover:bg-[#22c55e]/5 transition-all group"
-            >
-              <span className="text-3xl mb-2 opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-transform">🎁</span>
+            <button onClick={() => setModalPremios(true)} className="bg-[#09090b] border border-[#27272a] rounded-lg p-5 flex flex-col items-center justify-center hover:border-[#22c55e] hover:bg-[#22c55e]/5 transition-all group">
+              <svg className="w-8 h-8 mb-2 text-zinc-500 group-hover:text-white group-hover:scale-110 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path></svg>
               <span className="text-sm font-bold text-zinc-300 group-hover:text-[#22c55e]">Adicionar prêmios</span>
             </button>
-            
-            <button 
-              onClick={() => setModalPromocoes(true)}
-              className="bg-[#09090b] border border-[#27272a] rounded-lg p-5 flex flex-col items-center justify-center hover:border-[#22c55e] hover:bg-[#22c55e]/5 transition-all group"
-            >
-              <span className="text-3xl mb-2 opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-transform">🏷️</span>
+            <button onClick={() => setModalPromocoes(true)} className="bg-[#09090b] border border-[#27272a] rounded-lg p-5 flex flex-col items-center justify-center hover:border-[#22c55e] hover:bg-[#22c55e]/5 transition-all group">
+              <svg className="w-8 h-8 mb-2 text-zinc-500 group-hover:text-white group-hover:scale-110 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
               <span className="text-sm font-bold text-zinc-300 group-hover:text-[#22c55e]">Adicionar promoção</span>
             </button>
           </div>
 
-          {/* Caixa de Data do Sorteio */}
           <div className="bg-[#09090b] border border-[#27272a] rounded-lg p-5">
             <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-              <span className="text-[#22c55e]">📅</span> Data do sorteio
+              <svg className="w-5 h-5 text-[#22c55e]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+              Data do sorteio
             </h3>
             
             <div className="flex bg-[#18181b] rounded-md p-1 border border-[#27272a]">
@@ -455,7 +487,7 @@ export function FormularioRifa() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-[#18181b] p-6 rounded-lg w-full max-w-sm border border-[#27272a] max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold">Taxa de publicação</h3>
+              <h3 className="text-lg font-bold">Taxas de publicação da Rifa</h3>
               <button onClick={() => setMostrarTabela(false)} className="text-zinc-400 hover:text-white">X</button>
             </div>
             <div className="space-y-3 text-sm">
@@ -487,7 +519,8 @@ export function FormularioRifa() {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white">Adicionar prêmio</h3>
               <button onClick={() => setModalPremios(false)} className="border border-[#27272a] bg-[#09090b] px-4 py-2 rounded text-zinc-400 hover:text-white text-sm transition-colors flex items-center gap-2">
-                <span>{'<'}</span> Voltar
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+                Voltar
               </button>
             </div>
 
@@ -503,7 +536,7 @@ export function FormularioRifa() {
                   />
                   {premios.length > 1 && (
                     <button onClick={() => removePremio(premio.id)} className="absolute right-3 top-10 text-zinc-500 hover:text-red-500 transition-colors">
-                      🗑️
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
                   )}
                 </div>
@@ -527,15 +560,16 @@ export function FormularioRifa() {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white">Adicionar promoção</h3>
               <button onClick={() => setModalPromocoes(false)} className="border border-[#27272a] bg-[#09090b] px-4 py-2 rounded text-zinc-400 hover:text-white text-sm transition-colors flex items-center gap-2">
-                <span>{'<'}</span> Voltar
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+                Voltar
               </button>
             </div>
 
             <div className="space-y-6 mb-6">
               {promocoes.map((promo) => {
-                // Cálculo automático: Valor Total / Quantidade
-                const valorReais = promo.valorEmCentavos / 100;
-                const valorCada = Number(promo.qtd) > 0 ? (valorReais / Number(promo.qtd)) : 0;
+                const valorReais = Number(promo.valorEmTexto.replace(',', '.')) || 0;
+                const qtdNumerica = Number(promo.qtd) || 0;
+                const valorCada = qtdNumerica > 0 ? (valorReais / qtdNumerica) : 0;
                 
                 return (
                   <div key={promo.id} className="relative bg-[#09090b] p-4 rounded border border-[#27272a]">
@@ -555,7 +589,7 @@ export function FormularioRifa() {
                           <span className="bg-[#22c55e] text-black font-bold flex items-center px-3 rounded-l">R$</span>
                           <input 
                             type="text" 
-                            value={promo.valorEmCentavos > 0 ? (promo.valorEmCentavos / 100).toFixed(2).replace('.', ',') : ''} 
+                            value={promo.valorEmTexto} 
                             onChange={(e) => updatePromocaoValor(promo.id, e)} 
                             className="w-full bg-[#18181b] border border-[#27272a] rounded-r p-3 focus:border-[#22c55e] outline-none text-white border-l-0" 
                             placeholder="0,00" 
@@ -567,8 +601,9 @@ export function FormularioRifa() {
                     
                     {promocoes.length > 1 && (
                       <div className="text-right mt-2">
-                        <button onClick={() => removePromocao(promo.id)} className="text-zinc-500 hover:text-red-500 text-sm transition-colors">
-                          🗑️ Excluir
+                        <button onClick={() => removePromocao(promo.id)} className="text-zinc-500 hover:text-red-500 text-sm transition-colors flex items-center justify-end gap-1 w-full mt-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                          Excluir
                         </button>
                       </div>
                     )}
