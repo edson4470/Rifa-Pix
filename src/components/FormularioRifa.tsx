@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
+import { supabase } from '../supabase'; // 🚀 Importando a nossa conexão!
 
 export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void }) {
   const [etapa, setEtapa] = useState(1);
+  const [salvando, setSalvando] = useState(false); // 🚀 Estado para mostrar "Salvando..."
 
   // ================= ESTADOS DA ETAPA 1 =================
   const [nome, setNome] = useState('');
@@ -166,20 +168,59 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
 
   const excluirFoto = () => setFotoPreview(null);
 
-  const finalizarCampanha = () => {
-    const dadosParaSalvar = {
-      nome: nome || "Campanha Sem Nome",
-      fotoUrl: fotoPreview,
-      totalCotas: qtd > 0 ? qtd : 100,
-      valorPorCotaEmReais: valorEmReais,
-      cotasVendidas: 0,
+  // 🚀 AQUI ACONTECE A MÁGICA DE SALVAR NO BANCO DE DADOS
+  const finalizarCampanha = async () => {
+    if (!nome) {
+      alert("Por favor, volte na Etapa 1 e dê um nome para sua rifa.");
+      return;
+    }
+    if (qtd <= 0) {
+      alert("Por favor, volte na Etapa 1 e escolha a quantidade de cotas.");
+      return;
+    }
+
+    setSalvando(true); // Ativa o aviso de "Salvando..."
+
+    // Prepara as informações exatamente como estão nas gavetas do Supabase (nome_das_colunas)
+    const dadosParaOSupabase = {
+      nome: nome,
+      foto_url: fotoPreview,
+      total_cotas: qtd,
+      valor_por_cota: valorEmReais,
+      cotas_vendidas: 0,
       status: "Pendente"
     };
 
-    if (onSucesso) {
-      onSucesso(dadosParaSalvar);
-    } else {
-      alert("Campanha salva com sucesso!");
+    try {
+      // Mandando para a tabela 'campanhas'
+      const { data, error } = await supabase
+        .from('campanhas')
+        .insert([dadosParaOSupabase])
+        .select(); // Pede para o banco devolver a linha salva (para pegar o ID gerado)
+
+      if (error) {
+        throw error;
+      }
+
+      // Se deu certo, avisamos a tela de Gerenciamento!
+      if (onSucesso && data) {
+        onSucesso({
+          id: data[0].id,
+          nome: data[0].nome,
+          status: data[0].status,
+          fotoUrl: data[0].foto_url,
+          totalCotas: data[0].total_cotas,
+          cotasVendidas: data[0].cotas_vendidas,
+          valorPorCotaEmReais: data[0].valor_por_cota
+        });
+      } else {
+        alert("Campanha salva com sucesso!");
+      }
+    } catch (erro: any) {
+      console.error("Erro ao salvar no Supabase:", erro);
+      alert("Não foi possível salvar a campanha: " + erro.message);
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -195,7 +236,7 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
           </h2>
           <button 
             onClick={() => setEtapa(etapa > 1 ? etapa - 1 : 1)}
-            disabled={etapa === 1}
+            disabled={etapa === 1 || salvando}
             className={`border border-[#27272a] bg-[#09090b] px-4 py-2 rounded flex items-center gap-2 text-sm transition-colors ${etapa === 1 ? 'opacity-50 cursor-not-allowed text-zinc-600' : 'text-zinc-400 hover:text-white'}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -252,7 +293,7 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
             <select value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className="w-full bg-[#09090b] border border-[#27272a] rounded p-3 focus:border-[#22c55e] outline-none">
               <option value="0">Selecionar</option>
               <optgroup label="Títulos">
-<option value="25">25 títulos - (00 à 24)</option>
+                <option value="25">25 títulos - (00 à 24)</option>
                 <option value="50">50 títulos - (00 à 49)</option>
                 <option value="100">100 títulos - (00 à 99)</option>
                 <option value="150">150 títulos - (000 à 149)</option>
@@ -455,8 +496,13 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
             )}
           </div>
 
-          <button onClick={finalizarCampanha} className="w-full bg-[#22c55e] hover:bg-green-600 text-black font-bold py-4 rounded transition-colors mt-6 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)]">
-            Finalizar Campanha
+          {/* 🚀 BOTÃO ATUALIZADO */}
+          <button 
+            onClick={finalizarCampanha} 
+            disabled={salvando}
+            className="w-full bg-[#22c55e] hover:bg-green-600 text-black font-bold py-4 rounded transition-colors mt-6 shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {salvando ? "Salvando no banco de dados..." : "Finalizar Campanha"}
           </button>
         </div>
       )}
