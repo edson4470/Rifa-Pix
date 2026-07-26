@@ -7,23 +7,30 @@ import { Checkout } from './components/Checkout/Checkout';
 import { MeusBilhetes } from './components/MeusBilhetes/MeusBilhetes';
 import { Validacao } from './components/Validacao/Validacao';
 import { Login } from './components/Login';
-import { RedefinirSenha } from './components/RedefinirSenha'; // 🚀 Importação adicionada
+import { RedefinirSenha } from './components/RedefinirSenha';
+import { LandingPage } from './components/LandingPage';
+import { ConfiguracaoPagamento } from './components/ConfiguracaoPagamento'; 
+import { MinhasCampanhas } from './components/MinhasCampanhas'; // 🚀 1. Importação da nova tela Minhas Campanhas!
 
 function AppRoutes() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🚀 Se estivermos na página de login ou redefinição, mostra apenas o conteúdo (sem barra lateral)
-  if (location.pathname === '/login' || location.pathname === '/redefinir-senha') {
+  // 🚀 Rotas PÚBLICAS (Sem a barra lateral - Sidebar)
+  const isPublicRoute = ['/', '/login', '/redefinir-senha'].includes(location.pathname);
+  
+  if (isPublicRoute) {
     return (
       <Routes>
+        {/* A Landing Page agora é a primeira tela que o cliente vê */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       </Routes>
     );
   }
 
-  // Se for qualquer outra página, mostra o layout normal (com a barra lateral)
+  // 🚀 Rotas do SISTEMA INTERNO (Com a barra lateral)
   return (
     <div className="flex min-h-screen bg-[#09090b] text-white">
       
@@ -33,11 +40,19 @@ function AppRoutes() {
       {/* Conteúdo principal à direita */}
       <main className="flex-1 p-8">
         <Routes>
-          <Route path="/" element={<FormularioRifa onSucesso={(dados) => navigate('/gerenciar-campanha', { state: dados })} />} />
+          {/* O formulário de criar rifa mudou para uma rota própria */}
+          <Route path="/criar-campanha" element={<FormularioRifa onSucesso={(dados) => navigate('/gerenciar-campanha', { state: dados })} />} />
+          
+          {/* 🚀 2. Rota atualizada: agora aponta para a nova tela que criamos hoje */}
+          <Route path="/minhas-campanhas" element={<MinhasCampanhas />} /> 
+          
           <Route path="/gerenciar-campanha" element={<GerenciarCampanha />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/meus-bilhetes" element={<MeusBilhetes />} />
           <Route path="/validacao" element={<Validacao />} />
+          
+          {/* 🚀 Nova rota de configurações de pagamento adicionada aqui */}
+          <Route path="/configuracao-pagamento" element={<ConfiguracaoPagamento />} />
         </Routes>
       </main>
 

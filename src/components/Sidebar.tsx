@@ -11,8 +11,8 @@ export function Sidebar() {
 
       {/* Botão Principal */}
       <Link 
-        to="/" 
-        className="w-full bg-[#22c55e] hover:bg-green-600 text-black font-bold py-3 px-4 rounded-lg mb-8 transition-colors text-center"
+        to="/criar-campanha" 
+        className="w-full block bg-[#22c55e] hover:bg-green-600 text-black font-bold py-3 px-4 rounded-lg mb-8 transition-colors text-center"
       >
         Criar Campanha
       </Link>
@@ -22,6 +22,10 @@ export function Sidebar() {
         <Link to="/" className="block text-zinc-400 hover:text-[#22c55e] transition-colors">Inicio</Link>
         <Link to="/minhas-campanhas" className="block text-zinc-400 hover:text-[#22c55e] transition-colors">Minhas Campanhas</Link>
         <Link to="/apoiadores" className="block text-zinc-400 hover:text-[#22c55e] transition-colors">Apoiadores</Link>
+        
+        {/* 🚀 Nosso novo botão de Pagamentos adicionado aqui! */}
+        <Link to="/configuracao-pagamento" className="block text-zinc-400 hover:text-[#22c55e] transition-colors">Pagamentos</Link>
+        
         <Link to="/configuracoes" className="block text-zinc-400 hover:text-[#22c55e] transition-colors">Configurações</Link>
         <Link to="/suporte" className="block text-zinc-400 hover:text-[#22c55e] transition-colors">Suporte</Link>
       </nav>

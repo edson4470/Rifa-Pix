@@ -37,8 +37,8 @@ export function Login() {
         
         if (error) throw error;
         
-        // Se deu sucesso, manda para a tela inicial
-        navigate('/'); 
+        // 🚀 CORREÇÃO: Se deu sucesso, manda para o PAINEL INTERNO e não mais para a vitrine
+        navigate('/minhas-campanhas'); 
 
       } else {
         // Tentar Cadastrar
@@ -83,6 +83,10 @@ export function Login() {
         provider: 'google',
       });
       if (error) throw error;
+      
+      // 🚀 CORREÇÃO: Garante que o login do Google também mande para o painel
+      navigate('/minhas-campanhas');
+      
     } catch (err: any) {
       setErro('Não foi possível conectar com o Google no momento.');
       setLoading(false);
