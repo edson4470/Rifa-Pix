@@ -38,15 +38,19 @@ export function GerenciarCampanha() {
     premio: '' 
   });
 
-  const dadosCampanha = location.state || {
-    id: null, // O ID é fundamental para salvar as configurações
+  // ================= ESTADOS DA CAMPANHA (NOVO) =================
+  // Transformado em state para podermos atualizar o status visualmente na hora
+  const [dadosCampanha, setDadosCampanha] = useState(location.state || {
+    id: null, 
     nome: "Nenhuma campanha encontrada",
     status: "Pendente",
     fotoUrl: null, 
     totalCotas: 0,
     cotasVendidas: 0,
     valorPorCotaEmReais: 0
-  };
+  });
+
+  const [publicando, setPublicando] = useState(false);
 
   useEffect(() => {
     async function buscarVendasNoBanco() {
@@ -70,7 +74,6 @@ export function GerenciarCampanha() {
       }
     }
 
-    // Opcional: Se quiser buscar as configurações atuais da roleta/caixa ao abrir a tela
     async function buscarConfiguracoes() {
       if (dadosCampanha.id) {
         const { data } = await supabase.from('campanhas').select('*').eq('id', dadosCampanha.id).single();
@@ -168,8 +171,30 @@ export function GerenciarCampanha() {
     : 0;
   const valorArrecadado = dadosCampanha.cotasVendidas * dadosCampanha.valorPorCotaEmReais;
 
+  // ================= NOVAS FUNÇÕES: VISUALIZAR E PUBLICAR =================
   const handleVisualizar = () => {
-    alert(`Redirecionando para a página pública...\nÉ assim que o seu cliente vai ver a campanha: "${dadosCampanha.nome}"`);
+    if (!dadosCampanha.id) {
+      alert("Erro: Não há campanha selecionada para visualização.");
+      return;
+    }
+    const nomeFormatado = dadosCampanha.nome.replace(/\s+/g, '-').toLowerCase();
+    const urlPublica = `/comprar/${nomeFormatado}`; 
+    window.open(urlPublica, '_blank');
+  };
+
+  // 🚀 AQUI FOI FEITA A ALTERAÇÃO: Agora envia para a tela de Checkout da Publicação e bloqueia o clique duplo
+  const handlePublicar = () => {
+    if (!dadosCampanha.id) {
+      alert("Aviso: ID da campanha não encontrado.");
+      return;
+    }
+
+    if (dadosCampanha.status === 'Ativa' || dadosCampanha.status === 'Publicado' || dadosCampanha.status === 'Em Análise') {
+      return; // Já está ativa ou em análise, não faz nada
+    }
+
+    // Redireciona para a tela de pagamento passando os dados da campanha atual
+    navigate('/checkout-publicacao', { state: dadosCampanha });
   };
 
   const handleCompartilhar = () => {
@@ -231,7 +256,13 @@ export function GerenciarCampanha() {
           <div className="flex-1 flex flex-col justify-center">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-2xl font-bold">{dadosCampanha.nome}</h2>
-              <span className="text-xs font-bold text-orange-400 bg-orange-400/10 px-3 py-1 rounded border border-orange-400/20">
+              <span className={`text-xs font-bold px-3 py-1 rounded border ${
+                dadosCampanha.status === 'Ativa' 
+                ? 'text-green-400 bg-green-400/10 border-green-400/20' 
+                : dadosCampanha.status === 'Em Análise' 
+                ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'
+                : 'text-orange-400 bg-orange-400/10 border-orange-400/20'
+              }`}>
                 {dadosCampanha.status}
               </span>
             </div>
@@ -297,24 +328,52 @@ export function GerenciarCampanha() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 mb-8 text-sm">
-          <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <p className="text-zinc-400">Publique essa ação em até <strong className="text-white">72h</strong> ou ela vai expirar</p>
-        </div>
+        {dadosCampanha.status !== 'Ativa' && (
+          <div className="flex items-center gap-2 mb-8 text-sm">
+            <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <p className="text-zinc-400">Publique essa ação em até <strong className="text-white">72h</strong> ou ela vai expirar</p>
+          </div>
+        )}
 
+        {/* ===================== BOTÕES ATUALIZADOS AQUI ===================== */}
         <div className="flex flex-col md:flex-row gap-4">
           <button onClick={handleVisualizar} className="flex-1 border border-[#27272a] bg-[#09090b] hover:bg-[#27272a] text-white font-bold py-4 rounded transition-colors flex items-center justify-center gap-2 group">
             <svg className="w-5 h-5 text-zinc-400 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
             Visualizar demonstração
           </button>
-          <button className="flex-1 bg-[#22c55e] hover:bg-green-600 text-black font-bold py-4 rounded transition-colors shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] flex items-center justify-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-            Publicar campanha
+          
+          <button 
+            onClick={handlePublicar}
+            disabled={publicando || dadosCampanha.status === 'Ativa' || dadosCampanha.status === 'Em Análise'}
+            className={`flex-1 font-bold py-4 rounded transition-colors flex items-center justify-center gap-2
+              ${(dadosCampanha.status === 'Ativa' || dadosCampanha.status === 'Em Análise') 
+                ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-[#27272a]' 
+                : 'bg-[#22c55e] hover:bg-green-600 text-black shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)]'
+              }`}
+          >
+            {publicando ? (
+               <span>Publicando...</span> 
+            ) : dadosCampanha.status === 'Ativa' ? (
+               <>
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                 Campanha Publicada
+               </>
+            ) : dadosCampanha.status === 'Em Análise' ? (
+               <>
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                 Em Análise (Aguardando Pix)
+               </>
+            ) : (
+               <>
+                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                 Publicar campanha
+               </>
+            )}
           </button>
         </div>
       </div>
 
-      {/* ===================== ÁREA DE MODAIS ===================== */}
+      {/* ===================== ÁREA DE MODAIS (INTACTA) ===================== */}
 
       {/* MODAL: MINHAS VENDAS */}
       {modalAtivo === 'vendas' && (

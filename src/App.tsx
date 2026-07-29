@@ -10,14 +10,19 @@ import { Login } from './components/Login';
 import { RedefinirSenha } from './components/RedefinirSenha';
 import { LandingPage } from './components/LandingPage';
 import { ConfiguracaoPagamento } from './components/ConfiguracaoPagamento'; 
-import { MinhasCampanhas } from './components/MinhasCampanhas'; // 🚀 1. Importação da nova tela Minhas Campanhas!
+import { MinhasCampanhas } from './components/MinhasCampanhas';
+import { PaginaCompra } from './components/PaginaCompra';
+
+// 🚀 1. Importação da nova tela de Checkout de Publicação adicionada aqui:
+import { CheckoutPublicacao } from './components/CheckoutPublicacao';
 
 function AppRoutes() {
   const navigate = useNavigate();
   const location = useLocation();
 
   // 🚀 Rotas PÚBLICAS (Sem a barra lateral - Sidebar)
-  const isPublicRoute = ['/', '/login', '/redefinir-senha'].includes(location.pathname);
+  // Adicionado o .startsWith('/comprar/') para que a tela do cliente fique sem a Sidebar do painel
+  const isPublicRoute = ['/', '/login', '/redefinir-senha'].includes(location.pathname) || location.pathname.startsWith('/comprar/');
   
   if (isPublicRoute) {
     return (
@@ -26,6 +31,9 @@ function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+        
+        {/* 🚀 Rota pública para a página de demonstração/venda da rifa */}
+        <Route path="/comprar/:slug" element={<PaginaCompra />} />
       </Routes>
     );
   }
@@ -43,15 +51,19 @@ function AppRoutes() {
           {/* O formulário de criar rifa mudou para uma rota própria */}
           <Route path="/criar-campanha" element={<FormularioRifa onSucesso={(dados) => navigate('/gerenciar-campanha', { state: dados })} />} />
           
-          {/* 🚀 2. Rota atualizada: agora aponta para a nova tela que criamos hoje */}
+          {/* 🚀 Rota atualizada: agora aponta para a tela Minhas Campanhas */}
           <Route path="/minhas-campanhas" element={<MinhasCampanhas />} /> 
           
           <Route path="/gerenciar-campanha" element={<GerenciarCampanha />} />
+          
+          {/* 🚀 2. Rota para o pagamento da taxa de publicação adicionada aqui: */}
+          <Route path="/checkout-publicacao" element={<CheckoutPublicacao />} />
+
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/meus-bilhetes" element={<MeusBilhetes />} />
           <Route path="/validacao" element={<Validacao />} />
           
-          {/* 🚀 Nova rota de configurações de pagamento adicionada aqui */}
+          {/* 🚀 Rota de configurações de pagamento */}
           <Route path="/configuracao-pagamento" element={<ConfiguracaoPagamento />} />
         </Routes>
       </main>
