@@ -16,6 +16,9 @@ import { PaginaCompra } from './components/PaginaCompra';
 // 🚀 1. Importação da nova tela de Checkout de Publicação adicionada aqui:
 import { CheckoutPublicacao } from './components/CheckoutPublicacao';
 
+// 🚀 2. Importação do novo Painel de Aprovações:
+import { PainelAprovacoes } from './components/PainelAprovacoes';
+
 function AppRoutes() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,7 +59,7 @@ function AppRoutes() {
           
           <Route path="/gerenciar-campanha" element={<GerenciarCampanha />} />
           
-          {/* 🚀 2. Rota para o pagamento da taxa de publicação adicionada aqui: */}
+          {/* 🚀 Rota para o pagamento da taxa de publicação adicionada aqui: */}
           <Route path="/checkout-publicacao" element={<CheckoutPublicacao />} />
 
           <Route path="/checkout" element={<Checkout />} />
@@ -65,6 +68,9 @@ function AppRoutes() {
           
           {/* 🚀 Rota de configurações de pagamento */}
           <Route path="/configuracao-pagamento" element={<ConfiguracaoPagamento />} />
+
+          {/* 🚀 Nova rota do Painel de Aprovações para você gerenciar os recebimentos */}
+          <Route path="/aprovacoes" element={<PainelAprovacoes />} />
         </Routes>
       </main>
 
