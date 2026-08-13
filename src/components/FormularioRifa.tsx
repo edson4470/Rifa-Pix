@@ -168,7 +168,7 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
 
   const excluirFoto = () => setFotoPreview(null);
 
-  // 🚀 AQUI ACONTECE A MÁGICA DE SALVAR NO BANCO DE DADOS
+  // 🚀 AQUI ACONTECE A MÁGICA DE SALVAR NO BANCO DE DADOS (AGORA COM SEGURANÇA)
   const finalizarCampanha = async () => {
     if (!nome) {
       alert("Por favor, volte na Etapa 1 e dê um nome para sua rifa.");
@@ -179,30 +179,39 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
       return;
     }
 
-    setSalvando(true); // Ativa o aviso de "Salvando..."
-
-    // Prepara as informações exatamente como estão nas gavetas do Supabase (nome_das_colunas)
-    const dadosParaOSupabase = {
-      nome: nome,
-      foto_url: fotoPreview,
-      total_cotas: qtd,
-      valor_por_cota: valorEmReais,
-      cotas_vendidas: 0,
-      status: "Pendente"
-    };
+    setSalvando(true); 
 
     try {
-      // Mandando para a tabela 'campanhas'
+      // 1. PRIMEIRO PASSO: Pega quem é o usuário que está logado criando a campanha
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        alert("Erro: Você precisa estar logado para criar uma campanha.");
+        setSalvando(false);
+        return;
+      }
+
+      // 2. SEGUNDO PASSO: Prepara as informações, AGORA INCLUINDO O USER_ID
+      const dadosParaOSupabase = {
+        user_id: user.id, // O cadeado de segurança!
+        nome: nome,
+        foto_url: fotoPreview,
+        total_cotas: qtd,
+        valor_por_cota: valorEmReais,
+        cotas_vendidas: 0,
+        status: "Pendente"
+      };
+
+      // 3. Mandando para a tabela 'campanhas'
       const { data, error } = await supabase
         .from('campanhas')
         .insert([dadosParaOSupabase])
-        .select(); // Pede para o banco devolver a linha salva (para pegar o ID gerado)
+        .select(); 
 
       if (error) {
         throw error;
       }
 
-      // Se deu certo, avisamos a tela de Gerenciamento!
       if (onSucesso && data) {
         onSucesso({
           id: data[0].id,
