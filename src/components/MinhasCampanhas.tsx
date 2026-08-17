@@ -127,6 +127,13 @@ export function MinhasCampanhas() {
     alert('Código Pix copiado! Cole no aplicativo do seu banco para pagar.');
   }
 
+  // NOVA FUNÇÃO CORRIGIDA: Copiar o link público da Rifa com a rota /comprar/
+  function copiarLinkDaRifa(campanhaId: string) {
+    const linkPublico = `${window.location.origin}/comprar/${campanhaId}`;
+    navigator.clipboard.writeText(linkPublico);
+    alert('Link copiado com sucesso! 🎉\n\nAgora é só colar no WhatsApp ou na bio do Instagram para começar a vender.');
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 relative">
       
@@ -190,7 +197,8 @@ export function MinhasCampanhas() {
                   </span>
                 )}
                 {campanha.status === 'Ativa' && (
-                  <span className="absolute top-3 left-3 bg-green-500/90 text-black text-xs font-bold px-3 py-1 rounded-full shadow">
+                  <span className="absolute top-3 left-3 bg-green-500/90 text-black text-xs font-bold px-3 py-1 rounded-full shadow flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-900 rounded-full animate-pulse"></span>
                     Ativa / No Ar
                   </span>
                 )}
@@ -213,8 +221,9 @@ export function MinhasCampanhas() {
                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                          Pagar Taxa de Publicação
                        </button>
+                       {/* CORREÇÃO DO BOTÃO GERENCIAR PENDENTE */}
                        <button 
-                         onClick={() => navigate('/gerenciar-campanha')}
+                         onClick={() => navigate('/gerenciar-campanha', { state: campanha })}
                          className="w-full bg-transparent border border-[#27272a] hover:bg-[#27272a] text-zinc-300 font-medium py-1.5 rounded-lg transition-colors text-sm"
                        >
                          Editar / Gerenciar
@@ -224,12 +233,35 @@ export function MinhasCampanhas() {
                        </p>
                      </div>
                   ) : (
-                    <button 
-                       onClick={() => navigate('/gerenciar-campanha')}
-                       className="w-full bg-[#27272a] hover:bg-[#3f3f46] text-white font-medium py-2 rounded-lg transition-colors"
-                    >
-                      Gerenciar Campanha
-                    </button>
+                    <div className="flex flex-col gap-2">
+                       {/* BOTÃO NOVO: Copiar Link (Destaque principal) */}
+                       <button 
+                         onClick={() => copiarLinkDaRifa(campanha.id)}
+                         className="w-full bg-[#22c55e] hover:bg-green-600 text-black font-bold py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.15)]"
+                       >
+                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                         Copiar Link para Venda
+                       </button>
+
+                       <div className="grid grid-cols-2 gap-2 mt-1">
+                         {/* CORREÇÃO DA ROTA PARA /comprar/ */}
+                         <button 
+                           onClick={() => navigate(`/comprar/${campanha.id}`)} 
+                           className="bg-zinc-200 hover:bg-white text-black font-semibold py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-1"
+                         >
+                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                           Ver Rifa
+                         </button>
+                         {/* CORREÇÃO DO BOTÃO AJUSTES */}
+                         <button 
+                           onClick={() => navigate('/gerenciar-campanha', { state: campanha })}
+                           className="bg-[#27272a] hover:bg-[#3f3f46] text-white font-medium py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-1"
+                         >
+                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path></svg>
+                           Ajustes
+                         </button>
+                       </div>
+                    </div>
                   )}
                 </div>
               </div>
