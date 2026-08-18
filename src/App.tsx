@@ -1,8 +1,7 @@
 // src/App.tsx
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 
-// 🚀 CORREÇÃO 1: Caminho ajustado para onde o seu arquivo supabase.ts realmente está
 import { supabase } from './supabase'; 
 
 import { Sidebar } from './components/Sidebar';
@@ -22,19 +21,16 @@ import { PainelAprovacoes } from './components/PainelAprovacoes';
 
 function AppRoutes() {
   const navigate = useNavigate();
-  const location = useLocation();
   
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 🚀 CORREÇÃO 2: Ajuste no modo de pegar a sessão para o TypeScript não reclamar
     supabase.auth.getSession().then((response) => {
       setSession(response.data.session);
       setLoading(false);
     });
 
-    // 🚀 CORREÇÃO 3: Coloquei o ': any' para satisfazer o modo estrito do TypeScript
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setSession(session);
     });
@@ -42,8 +38,6 @@ function AppRoutes() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const isPublicRoute = ['/', '/login', '/redefinir-senha'].includes(location.pathname) || location.pathname.startsWith('/comprar/');
-  
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#09090b] text-white">
@@ -52,40 +46,45 @@ function AppRoutes() {
     );
   }
 
-  if (isPublicRoute) {
+  // 🚀 O SEGREDO: Componente para proteger as rotas internas e colocar a Sidebar
+  const RotaPrivada = ({ children }: { children: React.ReactNode }) => {
+    if (!session) {
+      // Se não tiver sessão (chave de acesso), joga pro login
+      return <Navigate to="/login" replace />;
+    }
+    
+    // Se tiver logado, mostra o layout do sistema com a Sidebar
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
-        <Route path="/comprar/:slug" element={<PaginaCompra />} />
-      </Routes>
+      <div className="flex min-h-screen bg-[#09090b] text-white">
+        <Sidebar />
+        <main className="flex-1 p-8">
+          {children}
+        </main>
+      </div>
     );
-  }
+  };
 
-  // Se não tiver logado, chuta para a tela de login!
-  if (!session) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Rotas do SISTEMA INTERNO
   return (
-    <div className="flex min-h-screen bg-[#09090b] text-white">
-      <Sidebar />
-      <main className="flex-1 p-8">
-        <Routes>
-          <Route path="/criar-campanha" element={<FormularioRifa onSucesso={(dados) => navigate('/gerenciar-campanha', { state: dados })} />} />
-          <Route path="/minhas-campanhas" element={<MinhasCampanhas />} /> 
-          <Route path="/gerenciar-campanha" element={<GerenciarCampanha />} />
-          <Route path="/checkout-publicacao" element={<CheckoutPublicacao />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/meus-bilhetes" element={<MeusBilhetes />} />
-          <Route path="/validacao" element={<Validacao />} />
-          <Route path="/configuracao-pagamento" element={<ConfiguracaoPagamento />} />
-          <Route path="/aprovacoes" element={<PainelAprovacoes />} />
-        </Routes>
-      </main>
-    </div>
+    <Routes>
+      {/* Rotas 100% Públicas */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+      <Route path="/comprar/:slug" element={<PaginaCompra />} />
+
+      {/* 🚀 O PULO DO GATO: Se o usuário já tá logado e o navegador volta pro /login, ele é rebatido de volta pro painel automaticamente! */}
+      <Route path="/login" element={session ? <Navigate to="/minhas-campanhas" replace /> : <Login />} />
+
+      {/* Rotas Privadas (Protegidas) */}
+      <Route path="/criar-campanha" element={<RotaPrivada><FormularioRifa onSucesso={(dados) => navigate('/gerenciar-campanha', { state: dados })} /></RotaPrivada>} />
+      <Route path="/minhas-campanhas" element={<RotaPrivada><MinhasCampanhas /></RotaPrivada>} />
+      <Route path="/gerenciar-campanha" element={<RotaPrivada><GerenciarCampanha /></RotaPrivada>} />
+      <Route path="/checkout-publicacao" element={<RotaPrivada><CheckoutPublicacao /></RotaPrivada>} />
+      <Route path="/checkout" element={<RotaPrivada><Checkout /></RotaPrivada>} />
+      <Route path="/meus-bilhetes" element={<RotaPrivada><MeusBilhetes /></RotaPrivada>} />
+      <Route path="/validacao" element={<RotaPrivada><Validacao /></RotaPrivada>} />
+      <Route path="/configuracao-pagamento" element={<RotaPrivada><ConfiguracaoPagamento /></RotaPrivada>} />
+      <Route path="/aprovacoes" element={<RotaPrivada><PainelAprovacoes /></RotaPrivada>} />
+    </Routes>
   );
 }
 
