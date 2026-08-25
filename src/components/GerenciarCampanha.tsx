@@ -38,8 +38,7 @@ export function GerenciarCampanha() {
     premio: '' 
   });
 
-  // ================= ESTADOS DA CAMPANHA (NOVO) =================
-  // Transformado em state para podermos atualizar o status visualmente na hora
+  // ================= ESTADOS DA CAMPANHA =================
   const [dadosCampanha, setDadosCampanha] = useState(location.state || {
     id: null, 
     nome: "Nenhuma campanha encontrada",
@@ -166,23 +165,35 @@ export function GerenciarCampanha() {
     setGanhador(pessoa || null);
   };
 
-  const porcentagemVendida = dadosCampanha.totalCotas > 0 
-    ? (dadosCampanha.cotasVendidas / dadosCampanha.totalCotas) * 100 
-    : 0;
-  const valorArrecadado = dadosCampanha.cotasVendidas * dadosCampanha.valorPorCotaEmReais;
+  // 🚀 CORREÇÕES CIRÚRGICAS AQUI (Mapeia o banco de dados corretamente e evita o NaN)
+  const extrairValorNumerico = (valor: any) => {
+    if (!valor) return 0;
+    if (typeof valor === 'number') return valor;
+    const textoLimpo = String(valor).replace(/[^\d.,]/g, '').replace(',', '.');
+    return Number(textoLimpo) || 0;
+  };
 
-  // ================= NOVAS FUNÇÕES: VISUALIZAR E PUBLICAR =================
+  const totalCotasSeguro = Number(dadosCampanha.total_cotas || dadosCampanha.totalCotas || 0);
+  const cotasVendidasSeguro = Number(dadosCampanha.cotas_vendidas || dadosCampanha.cotasVendidas || 0);
+  const valorPorCotaSeguro = extrairValorNumerico(dadosCampanha.valor_por_cota || dadosCampanha.valorPorCotaEmReais || dadosCampanha.valor);
+  const imagemCapa = dadosCampanha.foto_url || dadosCampanha.fotoUrl || null;
+
+  const porcentagemVendida = totalCotasSeguro > 0 
+    ? (cotasVendidasSeguro / totalCotasSeguro) * 100 
+    : 0;
+  const valorArrecadado = cotasVendidasSeguro * valorPorCotaSeguro;
+
+  // ================= FUNÇÕES: VISUALIZAR E PUBLICAR CORRIGIDAS =================
   const handleVisualizar = () => {
     if (!dadosCampanha.id) {
       alert("Erro: Não há campanha selecionada para visualização.");
       return;
     }
-    const nomeFormatado = dadosCampanha.nome.replace(/\s+/g, '-').toLowerCase();
-    const urlPublica = `/comprar/${nomeFormatado}`; 
+    // 🚀 Usa o ID em vez do nome para garantir que a página de compra encontre a rifa
+    const urlPublica = `/comprar/${dadosCampanha.id}`; 
     window.open(urlPublica, '_blank');
   };
 
-  // 🚀 AQUI FOI FEITA A ALTERAÇÃO: Agora envia para a tela de Checkout da Publicação e bloqueia o clique duplo
   const handlePublicar = () => {
     if (!dadosCampanha.id) {
       alert("Aviso: ID da campanha não encontrado.");
@@ -190,16 +201,15 @@ export function GerenciarCampanha() {
     }
 
     if (dadosCampanha.status === 'Ativa' || dadosCampanha.status === 'Publicado' || dadosCampanha.status === 'Em Análise') {
-      return; // Já está ativa ou em análise, não faz nada
+      return; 
     }
 
-    // Redireciona para a tela de pagamento passando os dados da campanha atual
     navigate('/checkout-publicacao', { state: dadosCampanha });
   };
 
   const handleCompartilhar = () => {
-    const nomeFormatado = dadosCampanha.nome.replace(/\s+/g, '-').toLowerCase();
-    const linkDeVenda = `https://rifapix.com.br/comprar/${nomeFormatado}`;
+    // 🚀 Usa o ID corretamente no link de compartilhamento
+    const linkDeVenda = `${window.location.origin}/comprar/${dadosCampanha.id}`;
     navigator.clipboard.writeText(linkDeVenda);
     alert(`✅ Link copiado com sucesso!\n\nAgora é só colar no seu WhatsApp ou Instagram:\n${linkDeVenda}`);
   };
@@ -220,7 +230,8 @@ export function GerenciarCampanha() {
           </svg>
           Gerenciar campanha
         </h1>
-        <button onClick={() => navigate('/')} className="border border-[#27272a] bg-[#09090b] px-4 py-2 rounded flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors">
+        {/* 🚀 Ajustado o botão Voltar para ir para Minhas Campanhas */}
+        <button onClick={() => navigate('/minhas-campanhas')} className="border border-[#27272a] bg-[#09090b] px-4 py-2 rounded flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
           Voltar
         </button>
@@ -244,8 +255,9 @@ export function GerenciarCampanha() {
 
         <div className="flex flex-col md:flex-row gap-6 mb-8">
           <div className="w-full md:w-40 h-32 bg-[#09090b] border border-[#27272a] rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative group">
-            {dadosCampanha.fotoUrl ? (
-              <img src={dadosCampanha.fotoUrl} alt="Capa da Campanha" className="w-full h-full object-contain" />
+            {/* 🚀 Usando a variável corrigida imagemCapa */}
+            {imagemCapa ? (
+              <img src={imagemCapa} alt="Capa da Campanha" className="w-full h-full object-contain" />
             ) : (
               <svg className="w-10 h-10 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
@@ -275,13 +287,15 @@ export function GerenciarCampanha() {
             
             <div className="flex justify-between text-xs text-zinc-400 mb-6">
               <span>{porcentagemVendida.toFixed(2)} % vendido</span>
-              <span>{dadosCampanha.cotasVendidas} de {dadosCampanha.totalCotas}</span>
+              {/* 🚀 Exibindo as variáveis numéricas corretas */}
+              <span>{cotasVendidasSeguro} de {totalCotasSeguro}</span>
             </div>
 
             <div className="flex justify-between items-center border-t border-[#27272a] pt-4">
               <span className="text-sm text-zinc-400">Valor arrecadado</span>
               <div className="flex items-center gap-3">
                 <span className="text-[#22c55e] font-bold text-lg">
+                  {/* 🚀 Valor formatado sem NaN */}
                   {mostrarValor ? `R$ ${valorArrecadado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'R$ •••••'}
                 </span>
                 <button onClick={() => setMostrarValor(!mostrarValor)} className="text-zinc-500 hover:text-white transition-colors">

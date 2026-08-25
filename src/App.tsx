@@ -18,6 +18,8 @@ import { MinhasCampanhas } from './components/MinhasCampanhas';
 import { PaginaCompra } from './components/PaginaCompra';
 import { CheckoutPublicacao } from './components/CheckoutPublicacao';
 import { PainelAprovacoes } from './components/PainelAprovacoes';
+import { Configuracoes } from './components/Configuracoes'; // 🚀 Nova tela de Configurações
+import { Suporte } from './components/Suporte'; // 🚀 Nova tela de Suporte
 
 function AppRoutes() {
   const navigate = useNavigate();
@@ -46,14 +48,11 @@ function AppRoutes() {
     );
   }
 
-  // 🚀 O SEGREDO: Componente para proteger as rotas internas e colocar a Sidebar
   const RotaPrivada = ({ children }: { children: React.ReactNode }) => {
     if (!session) {
-      // Se não tiver sessão (chave de acesso), joga pro login
       return <Navigate to="/login" replace />;
     }
     
-    // Se tiver logado, mostra o layout do sistema com a Sidebar
     return (
       <div className="flex min-h-screen bg-[#09090b] text-white">
         <Sidebar />
@@ -71,7 +70,6 @@ function AppRoutes() {
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/comprar/:slug" element={<PaginaCompra />} />
 
-      {/* 🚀 O PULO DO GATO: Se o usuário já tá logado e o navegador volta pro /login, ele é rebatido de volta pro painel automaticamente! */}
       <Route path="/login" element={session ? <Navigate to="/minhas-campanhas" replace /> : <Login />} />
 
       {/* Rotas Privadas (Protegidas) */}
@@ -84,6 +82,10 @@ function AppRoutes() {
       <Route path="/validacao" element={<RotaPrivada><Validacao /></RotaPrivada>} />
       <Route path="/configuracao-pagamento" element={<RotaPrivada><ConfiguracaoPagamento /></RotaPrivada>} />
       <Route path="/aprovacoes" element={<RotaPrivada><PainelAprovacoes /></RotaPrivada>} />
+      
+      {/* 🚀 Rotas adicionadas para eliminar a tela branca */}
+      <Route path="/configuracoes" element={<RotaPrivada><Configuracoes /></RotaPrivada>} />
+      <Route path="/suporte" element={<RotaPrivada><Suporte /></RotaPrivada>} />
     </Routes>
   );
 }

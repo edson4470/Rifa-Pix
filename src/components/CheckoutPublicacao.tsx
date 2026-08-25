@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
@@ -8,6 +8,8 @@ export function CheckoutPublicacao() {
   const campanha = location.state;
 
   const [processando, setProcessando] = useState(false);
+  const [minhaChavePix, setMinhaChavePix] = useState('09590418422');
+  const [meuNomeRecebedor, setMeuNomeRecebedor] = useState('jose Edson da Silva'); // Pode manter ou mudar
 
   if (!campanha) {
     navigate('/');
@@ -15,11 +17,9 @@ export function CheckoutPublicacao() {
   }
 
   // =======================================================
-  // 💰 DADOS PARA O PIX DINÂMICO (Preencha com seus dados)
+  // 👑 DEFINA AQUI O SEU E-MAIL DE DONO DO SISTEMA
   // =======================================================
-  const MINHA_CHAVE_PIX = "seuemail@gmail.com"; // Sua chave real (Email, CPF, CNPJ ou Telefone)
-  const MEU_NOME_RECEBEDOR = "Edson Silva"; // Seu nome como aparece no banco
-  const MINHA_CIDADE = "Sao Paulo"; // Sua cidade (Sem acentos)
+  const SEU_EMAIL_ADMIN = "edson.importirlanda@gmail.com"; // <--- COLOQUE SEU EMAIL AQUI!
 
   // =======================================================
   // 🧮 CÁLCULO EXATO DA TAXA (Baseado na sua tabela)
@@ -51,9 +51,36 @@ export function CheckoutPublicacao() {
   const taxaPublicacao = getTaxa(totalCotas);
 
   // =======================================================
+  // 🔍 BUSCA SUA CHAVE PIX NO BANCO DE DADOS E CHECA SE É ADMIN
+  // =======================================================
+  useEffect(() => {
+    async function carregarDadosDoAdmin() {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Se for VOCÊ MESMO (O Dono) testando o sistema, pula a cobrança e aprova direto!
+      if (user && user.email === SEU_EMAIL_ADMIN) {
+        alert("Olá Admin! Como você é o dono, sua campanha será liberada imediatamente sem cobranças de taxa.");
+        
+        await supabase.from('campanhas').update({ status: 'Ativa' }).eq('id', campanha.id);
+        navigate('/gerenciar-campanha', { state: { ...campanha, status: 'Ativa' } });
+        return;
+      }
+
+      // Se for um usuário comum, vai puxar a sua chave Pix do seu Perfil lá na tabela 'profiles'
+      if (user) {
+         // Aqui, assumimos que você guarda a chave PIX do recebedor (sua chave mestre) em alguma configuração. 
+         // Se não tiver, vou deixar uma chave padrão, MAS substitua ela aqui.
+         setMinhaChavePix("coloque_sua_chave_pix_real_aqui");
+      }
+    }
+    carregarDadosDoAdmin();
+  }, []);
+
+  // =======================================================
   // ⚙️ GERADOR DE PAYLOAD PIX (BR CODE) AUTOMÁTICO
   // =======================================================
   const gerarPayloadPix = (chave: string, valor: number, recebedor: string, cidade: string) => {
+    if (!chave) return "";
     const valorFormatado = valor.toFixed(2);
     let payload = `00020101021126${(chave.length + 22).toString().padStart(2, '0')}0014br.gov.bcb.pix01${chave.length.toString().padStart(2, '0')}${chave}520400005303986540${valorFormatado.length.toString().padStart(2, '0')}${valorFormatado}5802BR59${recebedor.length.toString().padStart(2, '0')}${recebedor}60${cidade.length.toString().padStart(2, '0')}${cidade}62070503***6304FCA0`;
     
@@ -69,7 +96,7 @@ export function CheckoutPublicacao() {
     return payload + crcHex;
   };
 
-  const payloadPixGerado = gerarPayloadPix(MINHA_CHAVE_PIX, taxaPublicacao, MEU_NOME_RECEBEDOR, MINHA_CIDADE);
+  const payloadPixGerado = gerarPayloadPix(minhaChavePix, taxaPublicacao, meuNomeRecebedor, "Maceio");
 
   // =======================================================
   // 🚀 AVISAR PAGAMENTO (Muda para EM ANÁLISE)
@@ -79,13 +106,13 @@ export function CheckoutPublicacao() {
     try {
       const { error } = await supabase
         .from('campanhas')
-        .update({ status: 'Em Análise' })
+        .update({ status: 'Pendente' }) // O painel de aprovações escuta "Pendente"
         .eq('id', campanha.id);
 
       if (error) throw error;
 
-      alert("⏳ Recebemos seu aviso! Vamos conferir o pagamento e sua rifa será publicada em até 72 horas.");
-      navigate('/gerenciar-campanha', { state: { ...campanha, status: 'Em Análise' } });
+      alert("⏳ Recebemos seu aviso! O dono da plataforma (José Edson) fará a validação no banco e sua rifa será publicada em breve.");
+      navigate('/gerenciar-campanha', { state: { ...campanha, status: 'Pendente' } });
       
     } catch (error: any) {
       console.error(error);
@@ -98,6 +125,10 @@ export function CheckoutPublicacao() {
     navigator.clipboard.writeText(payloadPixGerado);
     alert("Código Pix Copiado com sucesso!");
   };
+
+  if (minhaChavePix === "") {
+     return <div className="text-white text-center py-20">Carregando dados de pagamento...</div>;
+  }
 
   return (
     <div className="max-w-5xl mx-auto animate-in fade-in duration-300">
@@ -140,7 +171,7 @@ export function CheckoutPublicacao() {
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-6 text-center shadow-lg">
             <h3 className="text-orange-400 font-bold mb-2">Conferência Manual</h3>
             <p className="text-sm text-zinc-300 mb-4">
-              Após o pagamento, nossa equipe fará a validação do recebimento. Sua rifa será liberada em até <strong className="text-white">72 horas</strong>.
+              Após o pagamento, o administrador verificará o extrato. Sua rifa será liberada em algumas horas.
             </p>
           </div>
         </div>

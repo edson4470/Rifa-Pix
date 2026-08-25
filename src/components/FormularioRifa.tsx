@@ -168,7 +168,7 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
 
   const excluirFoto = () => setFotoPreview(null);
 
-  // 🚀 AQUI ACONTECE A MÁGICA DE SALVAR NO BANCO DE DADOS (AGORA COM SEGURANÇA)
+  // 🚀 AQUI ACONTECE A MÁGICA DE SALVAR NO BANCO DE DADOS (AGORA COM SEGURANÇA E GERANDO OS BILHETES CORRIGIDOS)
   const finalizarCampanha = async () => {
     if (!nome) {
       alert("Por favor, volte na Etapa 1 e dê um nome para sua rifa.");
@@ -191,7 +191,7 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
         return;
       }
 
-      // 2. SEGUNDO PASSO: Prepara as informações, AGORA INCLUINDO O USER_ID
+      // 2. SEGUNDO PASSO: Salva a Campanha principal
       const dadosParaOSupabase = {
         user_id: user.id, // O cadeado de segurança!
         nome: nome,
@@ -202,7 +202,6 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
         status: "Pendente"
       };
 
-      // 3. Mandando para a tabela 'campanhas'
       const { data, error } = await supabase
         .from('campanhas')
         .insert([dadosParaOSupabase])
@@ -212,6 +211,34 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
         throw error;
       }
 
+      const idDaNovaCampanha = data[0].id;
+
+      // 🚀 3. TERCEIRO PASSO: GERAR OS BILHETES NO BANCO DE DADOS!
+      // Agora usando a coluna correta (campanha_id) para não dar erro 409
+      const bilhetesParaSalvar = [];
+      for (let i = 0; i < qtd; i++) {
+        bilhetesParaSalvar.push({
+          campanha_id: idDaNovaCampanha, // <--- AJUSTADO AQUI
+          numero: i,
+          status_pagamento: 'disponivel'
+        });
+      }
+
+      // Envia para o Supabase em lotes de 5.000 para evitar travamentos em rifas gigantes
+      const tamanhoDoLote = 5000;
+      for (let i = 0; i < bilhetesParaSalvar.length; i += tamanhoDoLote) {
+        const lote = bilhetesParaSalvar.slice(i, i + tamanhoDoLote);
+        const { error: erroBilhetes } = await supabase
+          .from('bilhetes')
+          .insert(lote);
+
+        if (erroBilhetes) {
+          console.error("Erro ao gerar bilhetes no lote:", erroBilhetes);
+          throw new Error("A campanha foi criada, mas ocorreu um erro ao gerar os números.");
+        }
+      }
+
+      // 4. QUARTO PASSO: Sucesso!
       if (onSucesso && data) {
         onSucesso({
           id: data[0].id,
@@ -223,7 +250,7 @@ export function FormularioRifa({ onSucesso }: { onSucesso?: (dados: any) => void
           valorPorCotaEmReais: data[0].valor_por_cota
         });
       } else {
-        alert("Campanha salva com sucesso!");
+        alert("Campanha e bilhetes gerados com sucesso!");
       }
     } catch (erro: any) {
       console.error("Erro ao salvar no Supabase:", erro);
